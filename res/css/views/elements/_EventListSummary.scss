@@ -19,7 +19,7 @@ limitations under the License.
 }
 
 .mx_TextualEvent.mx_EventListSummary_summary {
-    font-size: 14px;
+    font-size: 15px;
     display: inline-flex;
 }
 
@@ -51,7 +51,7 @@ limitations under the License.
 
 .mx_MatrixChat_useCompactLayout {
     .mx_EventListSummary {
-        font-size: 13px;
+        font-size: 14px;
         .mx_EventTile_line {
             line-height: 20px;
         }
@@ -66,6 +66,6 @@ limitations under the License.
     }
 
     .mx_TextualEvent.mx_EventListSummary_summary {
-        font-size: 13px;
+        font-size: 14px;
     }
 }

@@ -14,10 +14,10 @@ $monospace-font-family: Inconsolata, Twemoji, 'Apple Color Emoji', 'Segoe UI Emo
 
 // unified palette
 // try to use these colors when possible
-$accent-color: #03b381;
-$accent-bg-color: rgba(3, 179, 129, 0.16);
-$notice-primary-color: #ff4b55;
-$notice-primary-bg-color: rgba(255, 75, 85, 0.16);
+$accent-color: #139C9A;
+$accent-bg-color: rgba(19, 156, 154, 0.15);
+$notice-primary-color: #DC493A;
+$notice-primary-bg-color: rgba(220, 73, 58, 0.15);
 $notice-secondary-color: #61708b;
 $header-panel-bg-color: #f3f8fd;
 
@@ -172,21 +172,21 @@ $header-divider-color: #91A1C0;
 
 // ********************
 
-$roomtile-name-color: #61708b;
+$roomtile-name-color: $primary-fg-color;
 $roomtile-badge-fg-color: $accent-fg-color;
 $roomtile-selected-color: #212121;
 $roomtile-notified-color: #212121;
 $roomtile-selected-bg-color: #fff;
 $roomtile-focused-bg-color: #fff;
 
-$username-variant1-color: #368bd6;
-$username-variant2-color: #ac3ba8;
-$username-variant3-color: #03b381;
-$username-variant4-color: #e64f7a;
-$username-variant5-color: #ff812d;
-$username-variant6-color: #2dc2c5;
-$username-variant7-color: #5c56f5;
-$username-variant8-color: #74d12c;
+$username-variant1-color: #4F86C6; // blue
+$username-variant2-color: #6D6B9E; // grey-purple
+$username-variant3-color: #139C9A; // dark teal
+$username-variant4-color: #e64f7a; // pink
+$username-variant5-color: #42a919; // green
+$username-variant6-color: #3DAEAC; // teal
+$username-variant7-color: #74D3AE; // light teal
+$username-variant8-color: #E26A5D; // terra cotta
 
 $roomtile-transparent-focused-color: rgba(0, 0, 0, 0.1);
 

@@ -220,14 +220,12 @@ export default createReactClass({
         });
 
         if (hasUDE) {
-            title = _t("Message not sent due to unknown sessions being present");
+            title = _t("Please confirm that you want to send messages to an unknown recipient.");
             content = _t(
-                "<showSessionsText>Show sessions</showSessionsText>, <sendAnywayText>send anyway</sendAnywayText> or <cancelText>cancel</cancelText>.",
+                "<continueText>Continue</continueText>",
                 {},
                 {
-                    'showSessionsText': (sub) => <a className="mx_RoomStatusBar_resend_link" key="resend" onClick={this._onShowDevicesClick}>{ sub }</a>,
-                    'sendAnywayText': (sub) => <a className="mx_RoomStatusBar_resend_link" key="sendAnyway" onClick={this._onSendWithoutVerifyingClick}>{ sub }</a>,
-                    'cancelText': (sub) => <a className="mx_RoomStatusBar_resend_link" key="cancel" onClick={this._onCancelAllClick}>{ sub }</a>,
+                    'continueText': (sub) => <a className="mx_RoomStatusBar_resend_link" key="sendAnyway" onClick={this._onSendWithoutVerifyingClick}>{ sub }</a>,
                 },
             );
         } else {

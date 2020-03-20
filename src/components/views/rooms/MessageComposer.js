@@ -270,35 +270,37 @@ export default class MessageComposer extends React.Component {
     }
 
     renderPlaceholderText() {
-        if (SettingsStore.isFeatureEnabled("feature_cross_signing")) {
-            if (this.state.isQuoting) {
-                if (this.props.e2eStatus) {
-                    return _t('Send an encrypted reply…');
-                } else {
-                    return _t('Send a reply…');
-                }
-            } else {
-                if (this.props.e2eStatus) {
-                    return _t('Send an encrypted message…');
-                } else {
-                    return _t('Send a message…');
-                }
-            }
-        } else {
-            if (this.state.isQuoting) {
-                if (this.props.e2eStatus) {
-                    return _t('Send an encrypted reply…');
-                } else {
-                    return _t('Send a reply (unencrypted)…');
-                }
-            } else {
-                if (this.props.e2eStatus) {
-                    return _t('Send an encrypted message…');
-                } else {
-                    return _t('Send a message (unencrypted)…');
-                }
-            }
-        }
+        // if (SettingsStore.isFeatureEnabled("feature_cross_signing")) {
+        //     if (this.state.isQuoting) {
+        //         if (this.props.e2eStatus) {
+        //             return _t('Send an encrypted reply…');
+        //         } else {
+        //             return _t('Send a reply…');
+        //         }
+        //     } else {
+        //         if (this.props.e2eStatus) {
+        //             return _t('Send an encrypted message…');
+        //         } else {
+        //             return _t('Send a message…');
+        //         }
+        //     }
+        // } else {
+        //     if (this.state.isQuoting) {
+        //         if (this.props.e2eStatus) {
+        //             return _t('Send an encrypted reply…');
+        //         } else {
+        //             return _t('Send a reply (unencrypted)…');
+        //         }
+        //     } else {
+        //         if (this.props.e2eStatus) {
+        //             return _t('Send an encrypted message…');
+        //         } else {
+        //             return _t('Send a message (unencrypted)…');
+        //         }
+        //     }
+        // }
+
+        return _t('Type a colon to find the emojis, i.e. :happy:');
     }
 
     render() {
@@ -324,8 +326,6 @@ export default class MessageComposer extends React.Component {
                     room={this.props.room}
                     placeholder={this.renderPlaceholderText()}
                     permalinkCreator={this.props.permalinkCreator} />,
-                <Stickerpicker key='stickerpicker_controls_button' room={this.props.room} />,
-                <UploadButton key="controls_upload" roomId={this.props.room.roomId} />,
             );
 
             if (this.state.showCallButtons) {
