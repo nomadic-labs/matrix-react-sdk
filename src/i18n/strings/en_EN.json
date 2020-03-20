@@ -1927,6 +1927,7 @@
     "Explore rooms": "Explore rooms",
     "Message not sent due to unknown sessions being present": "Message not sent due to unknown sessions being present",
     "<showSessionsText>Show sessions</showSessionsText>, <sendAnywayText>send anyway</sendAnywayText> or <cancelText>cancel</cancelText>.": "<showSessionsText>Show sessions</showSessionsText>, <sendAnywayText>send anyway</sendAnywayText> or <cancelText>cancel</cancelText>.",
+    "<continueText>Continue</continueText>": "<continueText>Continue</continueText>",
     "You can't send any messages until you review and agree to <consentLink>our terms and conditions</consentLink>.": "You can't send any messages until you review and agree to <consentLink>our terms and conditions</consentLink>.",
     "Your message wasn't sent because this homeserver has hit its Monthly Active User Limit. Please <a>contact your service administrator</a> to continue using the service.": "Your message wasn't sent because this homeserver has hit its Monthly Active User Limit. Please <a>contact your service administrator</a> to continue using the service.",
     "Your message wasn't sent because this homeserver has exceeded a resource limit. Please <a>contact your service administrator</a> to continue using the service.": "Your message wasn't sent because this homeserver has exceeded a resource limit. Please <a>contact your service administrator</a> to continue using the service.",
@@ -2145,5 +2146,8 @@
     "Message downloading sleep time(ms)": "Message downloading sleep time(ms)",
     "Failed to set direct chat tag": "Failed to set direct chat tag",
     "Failed to remove tag %(tagName)s from room": "Failed to remove tag %(tagName)s from room",
-    "Failed to add tag %(tagName)s to room": "Failed to add tag %(tagName)s to room"
+    "Failed to add tag %(tagName)s to room": "Failed to add tag %(tagName)s to room",
+    "Please confirm that you want to send messages to an unknown recipient.": "Please confirm that you want to send messages to an unknown recipient.",
+    "Continue": "Continue",
+    "Type a colon to find the emojis, i.e. :happy": "Type a colon to find the emojis, i.e. :happy"
 }

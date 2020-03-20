@@ -189,6 +189,7 @@
     "Permissions": "Permissions",
     "Phone": "Phone",
     "Please check your email and click on the link it contains. Once this is done, click continue.": "Please check your email and click on the link it contains. Once this is done, click continue.",
+    "Please confirm that you want to send messages to an unknown recipient.": "Please confirm that you want to send messages to an unknown recipient.",
     "Power level must be positive integer.": "Power level must be positive integer.",
     "Prepends ¯\\_(ツ)_/¯ to a plain-text message": "Prepends ¯\\_(ツ)_/¯ to a plain-text message",
     "Privileged Users": "Privileged Users",
@@ -688,5 +689,7 @@
     "Try using turn.matrix.org": "Try using turn.matrix.org",
     "Messages": "Messages",
     "Actions": "Actions",
-    "Other": "Other"
+    "Other": "Other",
+    "Continue": "Continue",
+    "Type a colon to find the emojis, i.e. :happy:": "Type a colon to find the emojis, i.e. :happy:"
 }

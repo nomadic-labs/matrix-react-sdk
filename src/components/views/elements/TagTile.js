@@ -100,11 +100,15 @@ export default createReactClass({
     onClick: function(e) {
         e.preventDefault();
         e.stopPropagation();
+        // dis.dispatch({
+        //     action: 'select_tag',
+        //     tag: this.props.tag,
+        //     ctrlOrCmdKey: isOnlyCtrlOrCmdIgnoreShiftKeyEvent(e),
+        //     shiftKey: e.shiftKey,
+        // });
         dis.dispatch({
-            action: 'select_tag',
-            tag: this.props.tag,
-            ctrlOrCmdKey: isOnlyCtrlOrCmdIgnoreShiftKeyEvent(e),
-            shiftKey: e.shiftKey,
+            action: 'view_group',
+            group_id: this.props.tag,
         });
         if (this.props.tag[0] === '+') {
             // New rooms or members may have been added to the group, fetch async

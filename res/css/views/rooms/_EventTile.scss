@@ -19,7 +19,7 @@ limitations under the License.
     max-width: 100%;
     clear: both;
     padding-top: 18px;
-    font-size: 14px;
+    font-size: 15px;
     position: relative;
 }
 
@@ -64,7 +64,7 @@ limitations under the License.
 
 .mx_EventTile .mx_SenderProfile {
     color: $primary-fg-color;
-    font-size: 14px;
+    font-size: 15px;
     display: inline-block; /* anti-zalgo, with overflow hidden */
     overflow: hidden;
     cursor: pointer;
@@ -594,7 +594,7 @@ div.mx_EventTile_notSent.mx_EventTile_redacted .mx_UnknownBody {
     }
 
     .mx_EventTile .mx_SenderProfile {
-        font-size: 13px;
+        font-size: 14px;
     }
 
     .mx_EventTile.mx_EventTile_emote {

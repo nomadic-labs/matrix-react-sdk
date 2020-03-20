@@ -350,7 +350,7 @@ export default createReactClass({
     },
 
     _onGroupMyMembership: function(group) {
-        this.forceUpdate();
+        // this.forceUpdate();
     },
 
     onMouseMove: async function(ev) {
