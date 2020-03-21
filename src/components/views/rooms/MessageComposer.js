@@ -178,7 +178,7 @@ export default class MessageComposer extends React.Component {
             isQuoting: Boolean(RoomViewStore.getQuotingEvent()),
             tombstone: this._getRoomTombstone(),
             canSendMessages: this.props.room.maySendMessage(),
-            showCallButtons: SettingsStore.getValue("showCallButtonsInComposer"),
+            showCallButtons: false,
         };
     }
 

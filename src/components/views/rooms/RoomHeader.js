@@ -306,8 +306,6 @@ export default createReactClass({
             <div className="mx_RoomHeader_buttons">
                 { settingsButton }
                 { pinnedEventsButton }
-                { shareRoomButton }
-                { manageIntegsButton }
                 { forgetButton }
                 { searchButton }
             </div>;

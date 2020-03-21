@@ -90,13 +90,7 @@ export default class RoomHeaderButtons extends HeaderButtons {
                 isHighlighted={this.isPhase(RIGHT_PANEL_PHASES.FilePanel)}
                 onClick={this._onFilesClicked}
                 analytics={['Right Panel', 'File List Button', 'click']}
-            />,
-            <HeaderButton key="notifsButton" name="notifsButton"
-                title={_t('Notifications')}
-                isHighlighted={this.isPhase(RIGHT_PANEL_PHASES.NotificationPanel)}
-                onClick={this._onNotificationsClicked}
-                analytics={['Right Panel', 'Notification List Button', 'click']}
-            />,
+            />
         ];
     }
 }
