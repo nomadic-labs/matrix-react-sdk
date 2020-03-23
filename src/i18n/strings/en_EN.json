@@ -2149,5 +2149,5 @@
     "Failed to add tag %(tagName)s to room": "Failed to add tag %(tagName)s to room",
     "Please confirm that you want to send messages to an unknown recipient.": "Please confirm that you want to send messages to an unknown recipient.",
     "Continue": "Continue",
-    "Type a colon to find the emojis, i.e. :happy": "Type a colon to find the emojis, i.e. :happy"
+    "Type a colon to find the emojis, i.e. :happy:": "Type a colon to find the emojis, i.e. :happy:"
 }
