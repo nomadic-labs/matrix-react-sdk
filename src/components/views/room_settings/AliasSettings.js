@@ -62,7 +62,6 @@ class EditableAliasesList extends EditableItemList {
                 className="mx_EditableItemList_newItem"
             >
                 <RoomAliasField
-                    id={`mx_EditableItemList_new_${this.props.id}`}
                     ref={this._aliasField}
                     onChange={onChange}
                     value={this.props.newItem || ""}
@@ -221,10 +220,10 @@ export default class AliasSettings extends React.Component {
             }
         }).catch((err) => {
             console.error(err);
-            Modal.createTrackedDialog('Error creating alias', '', ErrorDialog, {
-                title: _t("Error creating alias"),
+            Modal.createTrackedDialog('Error creating address', '', ErrorDialog, {
+                title: _t("Error creating address"),
                 description: _t(
-                    "There was an error creating that alias. It may not be allowed by the server " +
+                    "There was an error creating that address. It may not be allowed by the server " +
                     "or a temporary failure occurred.",
                 ),
             });
@@ -236,8 +235,7 @@ export default class AliasSettings extends React.Component {
         // TODO: In future, we should probably be making sure that the alias actually belongs
         // to this room. See https://github.com/vector-im/riot-web/issues/7353
         MatrixClientPeg.get().deleteAlias(alias).then(() => {
-            const localAliases = this.state.localAliases.slice();
-            localAliases.splice(index);
+            const localAliases = this.state.localAliases.filter(a => a !== alias);
             this.setState({localAliases});
 
             if (this.state.canonicalAlias === alias) {
@@ -245,12 +243,18 @@ export default class AliasSettings extends React.Component {
             }
         }).catch((err) => {
             console.error(err);
-            Modal.createTrackedDialog('Error removing alias', '', ErrorDialog, {
-                title: _t("Error removing alias"),
-                description: _t(
-                    "There was an error removing that alias. It may no longer exist or a temporary " +
+            let description;
+            if (err.errcode === "M_FORBIDDEN") {
+                description = _t("You don't have permission to delete the address.");
+            } else {
+                description = _t(
+                    "There was an error removing that address. It may no longer exist or a temporary " +
                     "error occurred.",
-                ),
+                );
+            }
+            Modal.createTrackedDialog('Error removing address', '', ErrorDialog, {
+                title: _t("Error removing address"),
+                description,
             });
         });
     };

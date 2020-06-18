@@ -24,6 +24,8 @@ import createRoom from "../../../../../createRoom";
 import Modal from "../../../../../Modal";
 import * as sdk from "../../../../../";
 import PlatformPeg from "../../../../../PlatformPeg";
+import * as KeyboardShortcuts from "../../../../../accessibility/KeyboardShortcuts";
+import UpdateCheckButton from "../../UpdateCheckButton";
 
 export default class HelpUserSettingsTab extends React.Component {
     static propTypes = {
@@ -39,7 +41,7 @@ export default class HelpUserSettingsTab extends React.Component {
         };
     }
 
-    componentWillMount(): void {
+    componentDidMount(): void {
         PlatformPeg.get().getAppVersion().then((ver) => this.setState({vectorVersion: ver})).catch((e) => {
             console.error("Error getting vector version: ", e);
         });
@@ -176,12 +178,7 @@ export default class HelpUserSettingsTab extends React.Component {
 
         let updateButton = null;
         if (this.state.canUpdate) {
-            const platform = PlatformPeg.get();
-            updateButton = (
-                <AccessibleButton onClick={platform.startUpdateCheck} kind='primary'>
-                    {_t('Check for update')}
-                </AccessibleButton>
-            );
+            updateButton = <UpdateCheckButton />;
         }
 
         return (
@@ -224,6 +221,9 @@ export default class HelpUserSettingsTab extends React.Component {
                     <div className='mx_SettingsTab_subsectionText'>
                         {faqText}
                     </div>
+                    <AccessibleButton kind="primary" onClick={KeyboardShortcuts.toggleDialog}>
+                        { _t("Keyboard Shortcuts") }
+                    </AccessibleButton>
                 </div>
                 <div className='mx_SettingsTab_section mx_HelpUserSettingsTab_versions'>
                     <span className='mx_SettingsTab_subheading'>{_t("Versions")}</span>

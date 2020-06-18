@@ -16,7 +16,7 @@ limitations under the License.
 */
 import React from 'react';
 import PropTypes from 'prop-types';
-import dis from '../../../dispatcher';
+import dis from '../../../dispatcher/dispatcher';
 import EditorModel from '../../../editor/model';
 import {
     htmlSerializeIfNeeded,
@@ -42,6 +42,8 @@ import {_t, _td} from '../../../languageHandler';
 import ContentMessages from '../../../ContentMessages';
 import {Key} from "../../../Keyboard";
 import MatrixClientContext from "../../../contexts/MatrixClientContext";
+import {MatrixClientPeg} from "../../../MatrixClientPeg";
+import RateLimitedFunc from '../../../ratelimitedfunc';
 
 function addReplyToMessageContent(content, repliedToEvent, permalinkCreator) {
     const replyContent = ReplyThread.makeReplyMixIn(repliedToEvent);
@@ -102,6 +104,12 @@ export default class SendMessageComposer extends React.Component {
         this.model = null;
         this._editorRef = null;
         this.currentlyComposedEditorState = null;
+        const cli = MatrixClientPeg.get();
+        if (cli.isCryptoEnabled() && cli.isRoomEncrypted(this.props.room.roomId)) {
+            this._prepareToEncrypt = new RateLimitedFunc(() => {
+                cli.prepareToEncrypt(this.props.room);
+            }, 60000);
+        }
     }
 
     _setEditorRef = ref => {
@@ -121,14 +129,23 @@ export default class SendMessageComposer extends React.Component {
             this.onVerticalArrow(event, true);
         } else if (event.key === Key.ARROW_DOWN) {
             this.onVerticalArrow(event, false);
+        } else if (this._prepareToEncrypt) {
+            this._prepareToEncrypt();
+        } else if (event.key === Key.ESCAPE) {
+            dis.dispatch({
+                action: 'reply_to_event',
+                event: null,
+            });
         }
-    }
+    };
 
     onVerticalArrow(e, up) {
-        if (e.ctrlKey || e.shiftKey || e.metaKey) return;
+        // arrows from an initial-caret composer navigates recent messages to edit
+        // ctrl-alt-arrows navigate send history
+        if (e.shiftKey || e.metaKey) return;
 
-        const shouldSelectHistory = e.altKey;
-        const shouldEditLastMessage = !e.altKey && up && !RoomViewStore.getQuotingEvent();
+        const shouldSelectHistory = e.altKey && e.ctrlKey;
+        const shouldEditLastMessage = !e.altKey && !e.ctrlKey && up && !RoomViewStore.getQuotingEvent();
 
         if (shouldSelectHistory) {
             // Try select composer history
@@ -295,6 +312,7 @@ export default class SendMessageComposer extends React.Component {
                     event: null,
                 });
             }
+            dis.dispatch({action: "message_sent"});
         }
 
         this.sendHistoryManager.save(this.model);
@@ -305,16 +323,12 @@ export default class SendMessageComposer extends React.Component {
         this._clearStoredEditorState();
     }
 
-    componentDidMount() {
-        this._editorRef.getEditableRootNode().addEventListener("paste", this._onPaste, true);
-    }
-
     componentWillUnmount() {
         dis.unregister(this.dispatcherRef);
-        this._editorRef.getEditableRootNode().removeEventListener("paste", this._onPaste, true);
     }
 
-    componentWillMount() {
+    // TODO: [REACT-WARNING] Move this to constructor
+    UNSAFE_componentWillMount() { // eslint-disable-line camelcase
         const partCreator = new CommandPartCreator(this.props.room, this.context);
         const parts = this._restoreStoredEditorState(partCreator) || [];
         this.model = new EditorModel(parts, partCreator);
@@ -359,6 +373,9 @@ export default class SendMessageComposer extends React.Component {
             case 'quote':
                 this._insertQuotedMessage(payload.event);
                 break;
+            case 'insert_emoji':
+                this._insertEmoji(payload.emoji);
+                break;
         }
     };
 
@@ -396,6 +413,17 @@ export default class SendMessageComposer extends React.Component {
         this._editorRef && this._editorRef.focus();
     }
 
+    _insertEmoji = (emoji) => {
+        const {model} = this;
+        const {partCreator} = model;
+        const caret = this._editorRef.getCaret();
+        const position = model.positionForOffset(caret.offset, caret.atNodeEnd);
+        model.transform(() => {
+            const addedLen = model.insert([partCreator.plain(emoji)], position);
+            return model.positionForOffset(caret.offset + addedLen, true);
+        });
+    };
+
     _onPaste = (event) => {
         const {clipboardData} = event;
         if (clipboardData.files.length) {
@@ -406,6 +434,7 @@ export default class SendMessageComposer extends React.Component {
             ContentMessages.sharedInstance().sendContentListToRoom(
                 Array.from(clipboardData.files), this.props.room.roomId, this.context,
             );
+            return true; // to skip internal onPaste handler
         }
     }
 
@@ -422,6 +451,7 @@ export default class SendMessageComposer extends React.Component {
                     label={this.props.placeholder}
                     placeholder={this.props.placeholder}
                     onChange={this._saveStoredEditorState}
+                    onPaste={this._onPaste}
                 />
             </div>
         );

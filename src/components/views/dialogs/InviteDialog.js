@@ -27,14 +27,17 @@ import {getHttpUriForMxc} from "matrix-js-sdk/src/content-repo";
 import * as Email from "../../../email";
 import {getDefaultIdentityServerUrl, useDefaultIdentityServer} from "../../../utils/IdentityServerUtils";
 import {abbreviateUrl} from "../../../utils/UrlUtils";
-import dis from "../../../dispatcher";
+import dis from "../../../dispatcher/dispatcher";
 import IdentityAuthClient from "../../../IdentityAuthClient";
 import Modal from "../../../Modal";
 import {humanizeTime} from "../../../utils/humanize";
 import createRoom, {canEncryptToAllUsers} from "../../../createRoom";
 import {inviteMultipleToRoom} from "../../../RoomInvite";
 import SettingsStore from '../../../settings/SettingsStore';
-import RoomListStore, {TAG_DM} from "../../../stores/RoomListStore";
+import {Key} from "../../../Keyboard";
+import {Action} from "../../../dispatcher/actions";
+import {RoomListStoreTempProxy} from "../../../stores/room-list/RoomListStoreTempProxy";
+import {DefaultTagID} from "../../../stores/room-list/models";
 
 export const KIND_DM = "dm";
 export const KIND_INVITE = "invite";
@@ -125,7 +128,7 @@ class ThreepidMember extends Member {
 class DMUserTile extends React.PureComponent {
     static propTypes = {
         member: PropTypes.object.isRequired, // Should be a Member (see interface above)
-        onRemove: PropTypes.func.isRequired, // takes 1 argument, the member being removed
+        onRemove: PropTypes.func, // takes 1 argument, the member being removed
     };
 
     _onRemove = (e) => {
@@ -156,18 +159,25 @@ class DMUserTile extends React.PureComponent {
                 width={avatarSize}
                 height={avatarSize} />;
 
-        return (
-            <span className='mx_InviteDialog_userTile'>
-                <span className='mx_InviteDialog_userTile_pill'>
-                    {avatar}
-                    <span className='mx_InviteDialog_userTile_name'>{this.props.member.name}</span>
-                </span>
+        let closeButton;
+        if (this.props.onRemove) {
+            closeButton = (
                 <AccessibleButton
                     className='mx_InviteDialog_userTile_remove'
                     onClick={this._onRemove}
                 >
                     <img src={require("../../../../res/img/icon-pill-remove.svg")} alt={_t('Remove')} width={8} height={8} />
                 </AccessibleButton>
+            );
+        }
+
+        return (
+            <span className='mx_InviteDialog_userTile'>
+                <span className='mx_InviteDialog_userTile_pill'>
+                    {avatar}
+                    <span className='mx_InviteDialog_userTile_name'>{this.props.member.name}</span>
+                </span>
+                { closeButton }
             </span>
         );
     }
@@ -335,10 +345,10 @@ export default class InviteDialog extends React.PureComponent {
     _buildRecents(excludedTargetIds: Set<string>): {userId: string, user: RoomMember, lastActive: number} {
         const rooms = DMRoomMap.shared().getUniqueRoomsWithIndividuals(); // map of userId => js-sdk Room
 
-        // Also pull in all the rooms tagged as TAG_DM so we don't miss anything. Sometimes the
+        // Also pull in all the rooms tagged as DefaultTagID.DM so we don't miss anything. Sometimes the
         // room list doesn't tag the room for the DMRoomMap, but does for the room list.
-        const taggedRooms = RoomListStore.getRoomLists();
-        const dmTaggedRooms = taggedRooms[TAG_DM];
+        const taggedRooms = RoomListStoreTempProxy.getRoomLists();
+        const dmTaggedRooms = taggedRooms[DefaultTagID.DM];
         const myUserId = MatrixClientPeg.get().getUserId();
         for (const dmRoom of dmTaggedRooms) {
             const otherMembers = dmRoom.getJoinedMembers().filter(u => u.userId !== myUserId);
@@ -566,13 +576,16 @@ export default class InviteDialog extends React.PureComponent {
 
         const createRoomOptions = {inlineErrors: true};
 
-        if (SettingsStore.isFeatureEnabled("feature_cross_signing")) {
+        if (SettingsStore.getValue("feature_cross_signing")) {
             // Check whether all users have uploaded device keys before.
             // If so, enable encryption in the new room.
-            const client = MatrixClientPeg.get();
-            const allHaveDeviceKeys = await canEncryptToAllUsers(client, targetIds);
-            if (allHaveDeviceKeys) {
-                createRoomOptions.encryption = true;
+            const has3PidMembers = targets.some(t => t instanceof ThreepidMember);
+            if (!has3PidMembers) {
+                const client = MatrixClientPeg.get();
+                const allHaveDeviceKeys = await canEncryptToAllUsers(client, targetIds);
+                if (allHaveDeviceKeys) {
+                    createRoomOptions.encryption = true;
+                }
             }
         }
 
@@ -640,11 +653,14 @@ export default class InviteDialog extends React.PureComponent {
         });
     };
 
-    _cancel = () => {
-        // We do not want the user to close the dialog while an action is in progress
-        if (this.state.busy) return;
-
-        this.props.onFinished();
+    _onKeyDown = (e) => {
+        // when the field is empty and the user hits backspace remove the right-most target
+        if (!e.target.value && !this.state.busy && this.state.targets.length > 0 && e.key === Key.BACKSPACE &&
+            !e.ctrlKey && !e.shiftKey && !e.metaKey
+        ) {
+            e.preventDefault();
+            this._removeMember(this.state.targets[this.state.targets.length - 1]);
+        }
     };
 
     _updateFilter = (e) => {
@@ -888,8 +904,8 @@ export default class InviteDialog extends React.PureComponent {
 
     _onManageSettingsClick = (e) => {
         e.preventDefault();
-        dis.dispatch({ action: 'view_user_settings' });
-        this._cancel();
+        dis.fire(Action.ViewUserSettings);
+        this.props.onFinished();
     };
 
     _renderSection(kind: "recents"|"suggestions") {
@@ -984,17 +1000,18 @@ export default class InviteDialog extends React.PureComponent {
 
     _renderEditor() {
         const targets = this.state.targets.map(t => (
-            <DMUserTile member={t} onRemove={this._removeMember} key={t.userId} />
+            <DMUserTile member={t} onRemove={!this.state.busy && this._removeMember} key={t.userId} />
         ));
         const input = (
             <textarea
-                key={"input"}
                 rows={1}
+                onKeyDown={this._onKeyDown}
                 onChange={this._updateFilter}
                 value={this.state.filterText}
                 ref={this._editorRef}
                 onPaste={this._onPaste}
                 autoFocus={true}
+                disabled={this.state.busy}
             />
         );
         return (
@@ -1055,24 +1072,26 @@ export default class InviteDialog extends React.PureComponent {
         let buttonText;
         let goButtonFn;
 
+        const userId = MatrixClientPeg.get().getUserId();
         if (this.props.kind === KIND_DM) {
-            const userId = MatrixClientPeg.get().getUserId();
-
             title = _t("Direct Messages");
             helpText = _t(
-                "If you can't find someone, ask them for their username, share your " +
-                "username (%(userId)s) or <a>profile link</a>.",
-                {userId},
-                {a: (sub) => <a href={makeUserPermalink(userId)} rel="noreferrer noopener" target="_blank">{sub}</a>},
+                "Start a conversation with someone using their name, username (like <userId/>) or email address.",
+                {},
+                {userId: () => {
+                    return <a href={makeUserPermalink(userId)} rel="noreferrer noopener" target="_blank">{userId}</a>;
+                }},
             );
             buttonText = _t("Go");
             goButtonFn = this._startDm;
         } else { // KIND_INVITE
             title = _t("Invite to this room");
             helpText = _t(
-                "If you can't find someone, ask them for their username (e.g. @user:server.com) or " +
-                "<a>share this room</a>.", {},
+                "Invite someone using their name, username (like <userId/>), email address or <a>share this room</a>.",
+                {},
                 {
+                    userId: () =>
+                        <a href={makeUserPermalink(userId)} rel="noreferrer noopener" target="_blank">{userId}</a>,
                     a: (sub) =>
                         <a href={makeRoomPermalink(this.props.roomId)} rel="noreferrer noopener" target="_blank">{sub}</a>,
                 },
@@ -1087,7 +1106,7 @@ export default class InviteDialog extends React.PureComponent {
             <BaseDialog
                 className='mx_InviteDialog'
                 hasCancel={true}
-                onFinished={this._cancel}
+                onFinished={this.props.onFinished}
                 title={title}
             >
                 <div className='mx_InviteDialog_content'>

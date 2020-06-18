@@ -127,6 +127,13 @@ function textForRoomNameEvent(ev) {
     if (!ev.getContent().name || ev.getContent().name.trim().length === 0) {
         return _t('%(senderDisplayName)s removed the room name.', {senderDisplayName});
     }
+    if (ev.getPrevContent().name) {
+        return _t('%(senderDisplayName)s changed the room name from %(oldRoomName)s to %(newRoomName)s.', {
+            senderDisplayName,
+            oldRoomName: ev.getPrevContent().name,
+            newRoomName: ev.getContent().name,
+        });
+    }
     return _t('%(senderDisplayName)s changed the room name to %(roomName)s.', {
         senderDisplayName,
         roomName: ev.getContent().name,
@@ -596,6 +603,7 @@ const stateHandlers = {
     'm.room.guest_access': textForGuestAccessEvent,
     'm.room.related_groups': textForRelatedGroupsEvent,
 
+    // TODO: Enable support for m.widget event type (https://github.com/vector-im/riot-web/issues/13111)
     'im.vector.modular.widgets': textForWidgetEvent,
 };
 

@@ -19,7 +19,7 @@ import {MatrixClientPeg} from './MatrixClientPeg';
 import Modal from './Modal';
 import * as sdk from './index';
 import { _t } from './languageHandler';
-import dis from "./dispatcher";
+import dis from "./dispatcher/dispatcher";
 import * as Rooms from "./Rooms";
 import DMRoomMap from "./utils/DMRoomMap";
 import {getAddressType} from "./UserAddress";
@@ -174,6 +174,9 @@ export function findDMForUser(client, userId) {
             return member && (member.membership === "invite" || member.membership === "join");
         }
         return false;
+    }).sort((r1, r2) => {
+        return r2.getLastActiveTimestamp() -
+            r1.getLastActiveTimestamp();
     });
     if (suitableDMRooms.length) {
         return suitableDMRooms[0];
@@ -224,7 +227,7 @@ export async function ensureDMExists(client, userId) {
         roomId = existingDMRoom.roomId;
     } else {
         let encryption;
-        if (SettingsStore.isFeatureEnabled("feature_cross_signing")) {
+        if (SettingsStore.getValue("feature_cross_signing")) {
             encryption = canEncryptToAllUsers(client, [userId]);
         }
         roomId = await createRoom({encryption, dmUserId: userId, spinner: false, andView: false});

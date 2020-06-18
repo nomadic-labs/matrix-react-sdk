@@ -19,7 +19,7 @@ limitations under the License.
 import React from 'react';
 import PropTypes from 'prop-types';
 import createReactClass from 'create-react-class';
-import dis from '../../../dispatcher';
+import dis from '../../../dispatcher/dispatcher';
 import Modal from '../../../Modal';
 import * as sdk from '../../../index';
 import { _t } from '../../../languageHandler';
@@ -27,6 +27,8 @@ import { GroupMemberType } from '../../../groups';
 import GroupStore from '../../../stores/GroupStore';
 import AccessibleButton from '../elements/AccessibleButton';
 import MatrixClientContext from "../../../contexts/MatrixClientContext";
+import AutoHideScrollbar from "../../structures/AutoHideScrollbar";
+import {Action} from "../../../dispatcher/actions";
 
 export default createReactClass({
     displayName: 'GroupMemberInfo',
@@ -48,12 +50,13 @@ export default createReactClass({
         };
     },
 
-    componentWillMount: function() {
+    componentDidMount: function() {
         this._unmounted = false;
         this._initGroupStore(this.props.groupId);
     },
 
-    componentWillReceiveProps(newProps) {
+    // TODO: [REACT-WARNING] Replace with appropriate lifecycle event
+    UNSAFE_componentWillReceiveProps(newProps) {
         if (newProps.groupId !== this.props.groupId) {
             this._unregisterGroupStore(this.props.groupId);
             this._initGroupStore(newProps.groupId);
@@ -101,7 +104,7 @@ export default createReactClass({
                 ).then(() => {
                     // return to the user list
                     dis.dispatch({
-                        action: "view_user",
+                        action: Action.ViewUser,
                         member: null,
                     });
                 }).catch((e) => {
@@ -122,7 +125,7 @@ export default createReactClass({
     _onCancel: function(e) {
         // Go back to the user list
         dis.dispatch({
-            action: "view_user",
+            action: Action.ViewUser,
             member: null,
         });
     },
@@ -182,10 +185,9 @@ export default createReactClass({
             this.props.groupMember.displayname || this.props.groupMember.userId
         );
 
-        const GeminiScrollbarWrapper = sdk.getComponent('elements.GeminiScrollbarWrapper');
         return (
             <div className="mx_MemberInfo" role="tabpanel">
-                <GeminiScrollbarWrapper autoshow={true}>
+                <AutoHideScrollbar>
                     <AccessibleButton className="mx_MemberInfo_cancel" onClick={this._onCancel}>
                         <img src={require("../../../../res/img/cancel.svg")} width="18" height="18" className="mx_filterFlipColor" />
                     </AccessibleButton>
@@ -199,7 +201,7 @@ export default createReactClass({
                     </div>
 
                     { adminTools }
-                </GeminiScrollbarWrapper>
+                </AutoHideScrollbar>
             </div>
         );
     },
