@@ -230,7 +230,7 @@ export default createReactClass({
 
     onEmailChange(ev) {
         this.setState({
-            email: ev.target.value,
+            email: ev.target.value.toLowerCase(),
         });
     },
 
@@ -254,7 +254,7 @@ export default createReactClass({
                 key: "email",
                 test: ({ value }) => !value || Email.looksValid(value),
                 invalid: () => _t("Doesn't look like a valid email address"),
-            },
+            }
         ],
     }),
 

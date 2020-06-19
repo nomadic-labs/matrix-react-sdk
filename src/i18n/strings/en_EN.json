@@ -2259,11 +2259,6 @@
     "Failed to set direct chat tag": "Failed to set direct chat tag",
     "Failed to remove tag %(tagName)s from room": "Failed to remove tag %(tagName)s from room",
     "Failed to add tag %(tagName)s to room": "Failed to add tag %(tagName)s to room",
-<<<<<<< HEAD
-    "Please confirm that you want to send messages to an unknown recipient.": "Please confirm that you want to send messages to an unknown recipient.",
-    "Continue": "Continue",
-    "Type a colon to find the emojis, i.e. :happy:": "Type a colon to find the emojis, i.e. :happy:"
-=======
     "Navigation": "Navigation",
     "Calls": "Calls",
     "Room List": "Room List",
@@ -2307,6 +2302,8 @@
     "Esc": "Esc",
     "Enter": "Enter",
     "Space": "Space",
-    "End": "End"
->>>>>>> 0f6a0bb3ae6777261435588162ca232274cf5979
+    "End": "End",
+    "Show file upload button": "Show file upload button",
+    "Show emoji picker": "Show emoji picker",
+    "Show sticker picker": "Show sticker picker"
 }

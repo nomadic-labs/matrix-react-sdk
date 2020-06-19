@@ -216,7 +216,7 @@ export default class MessageComposer extends React.Component {
             isQuoting: Boolean(RoomViewStore.getQuotingEvent()),
             tombstone: this._getRoomTombstone(),
             canSendMessages: this.props.room.maySendMessage(),
-            showCallButtons: false,
+            showCallButtons: false
         };
     }
 
@@ -308,39 +308,6 @@ export default class MessageComposer extends React.Component {
     }
 
     renderPlaceholderText() {
-<<<<<<< HEAD
-        // if (SettingsStore.isFeatureEnabled("feature_cross_signing")) {
-        //     if (this.state.isQuoting) {
-        //         if (this.props.e2eStatus) {
-        //             return _t('Send an encrypted reply…');
-        //         } else {
-        //             return _t('Send a reply…');
-        //         }
-        //     } else {
-        //         if (this.props.e2eStatus) {
-        //             return _t('Send an encrypted message…');
-        //         } else {
-        //             return _t('Send a message…');
-        //         }
-        //     }
-        // } else {
-        //     if (this.state.isQuoting) {
-        //         if (this.props.e2eStatus) {
-        //             return _t('Send an encrypted reply…');
-        //         } else {
-        //             return _t('Send a reply (unencrypted)…');
-        //         }
-        //     } else {
-        //         if (this.props.e2eStatus) {
-        //             return _t('Send an encrypted message…');
-        //         } else {
-        //             return _t('Send a message (unencrypted)…');
-        //         }
-        //     }
-        // }
-
-        return _t('Type a colon to find the emojis, i.e. :happy:');
-=======
         if (SettingsStore.getValue("feature_cross_signing")) {
             if (this.state.isQuoting) {
                 if (this.props.e2eStatus) {
@@ -370,7 +337,6 @@ export default class MessageComposer extends React.Component {
                 }
             }
         }
->>>>>>> 0f6a0bb3ae6777261435588162ca232274cf5979
     }
 
     addEmoji(emoji) {
@@ -402,14 +368,20 @@ export default class MessageComposer extends React.Component {
                     key="controls_input"
                     room={this.props.room}
                     placeholder={this.renderPlaceholderText()}
-                    permalinkCreator={this.props.permalinkCreator} />,
-<<<<<<< HEAD
-=======
-                <UploadButton key="controls_upload" roomId={this.props.room.roomId} />,
-                <EmojiButton key="emoji_button" addEmoji={this.addEmoji} />,
-                <Stickerpicker key="stickerpicker_controls_button" room={this.props.room} />,
->>>>>>> 0f6a0bb3ae6777261435588162ca232274cf5979
+                    permalinkCreator={this.props.permalinkCreator} />
             );
+
+            if (SettingsStore.getValue('MessageComposer.showFileUpload')) {
+                controls.push( <UploadButton key="controls_upload" roomId={this.props.room.roomId} />)
+            }
+
+            if (SettingsStore.getValue('MessageComposer.showEmojipicker')) {
+                controls.push( <EmojiButton key="emoji_button" addEmoji={this.addEmoji} />)
+            }
+
+            if (SettingsStore.getValue('MessageComposer.showStickerpicker')) {
+                controls.push( <Stickerpicker key="stickerpicker_controls_button" room={this.props.room} />)
+            }
 
             if (this.state.showCallButtons) {
                 if (callInProgress) {

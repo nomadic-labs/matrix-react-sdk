@@ -691,5 +691,7 @@
     "Actions": "Actions",
     "Other": "Other",
     "Continue": "Continue",
-    "Type a colon to find the emojis, i.e. :happy:": "Type a colon to find the emojis, i.e. :happy:"
+    "Show file upload button": "Show file upload button",
+    "Show emoji picker": "Show emoji picker",
+    "Show sticker picker": "Show sticker picker"
 }
