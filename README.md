@@ -1,3 +1,15 @@
+matrix-react-sdk for OCRCC
+==========================
+
+Modifications:
+==============
+
+* Customize theme colours, mostly in `res/themes/light/css/_light.scss`
+* Increase text size for accessibility, various files in `res/css/`
+* Update messaging on warning that comes up on new unverfied chats
+* Use chatroom input placeholder to inform users how to open the emoji menu
+* Remove call, video, sticker, and attachment buttons until those features are supported on the chatbox
+
 matrix-react-sdk
 ================
 
