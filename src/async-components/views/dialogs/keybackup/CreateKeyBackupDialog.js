@@ -21,8 +21,7 @@ import * as sdk from '../../../../index';
 import {MatrixClientPeg} from '../../../../MatrixClientPeg';
 import PropTypes from 'prop-types';
 import {_t, _td} from '../../../../languageHandler';
-import { accessSecretStorage } from '../../../../CrossSigningManager';
-import SettingsStore from '../../../../settings/SettingsStore';
+import { accessSecretStorage } from '../../../../SecurityManager';
 import AccessibleButton from "../../../../components/views/elements/AccessibleButton";
 import {copyNode} from "../../../../utils/strings";
 import PassphraseField from "../../../../components/views/auth/PassphraseField";
@@ -67,10 +66,7 @@ export default class CreateKeyBackupDialog extends React.PureComponent {
 
     async componentDidMount() {
         const cli = MatrixClientPeg.get();
-        const secureSecretStorage = (
-            SettingsStore.getValue("feature_cross_signing") &&
-            await cli.doesServerSupportUnstableFeature("org.matrix.e2e_cross_signing")
-        );
+        const secureSecretStorage = await cli.doesServerSupportUnstableFeature("org.matrix.e2e_cross_signing");
         this.setState({ secureSecretStorage });
 
         // If we're using secret storage, skip ahead to the backing up step, as
@@ -290,7 +286,7 @@ export default class CreateKeyBackupDialog extends React.PureComponent {
             changeText = _t("Use a different passphrase?");
         } else if (!this.state.passPhrase.startsWith(this.state.passPhraseConfirm)) {
             // only tell them they're wrong if they've actually gone wrong.
-            // Security concious readers will note that if you left riot-web unattended
+            // Security concious readers will note that if you left element-web unattended
             // on this screen, this would make it easy for a malicious person to guess
             // your passphrase one letter at a time, but they could get this faster by
             // just opening the browser's developer tools and reading it.

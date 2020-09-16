@@ -15,25 +15,30 @@ limitations under the License.
 */
 
 import {MatrixClientPeg} from './MatrixClientPeg';
-import SettingsStore from './settings/SettingsStore';
+import dis from "./dispatcher/dispatcher";
 import {
     hideToast as hideBulkUnverifiedSessionsToast,
-    showToast as showBulkUnverifiedSessionsToast
+    showToast as showBulkUnverifiedSessionsToast,
 } from "./toasts/BulkUnverifiedSessionsToast";
 import {
     hideToast as hideSetupEncryptionToast,
     Kind as SetupKind,
-    Kind,
-    showToast as showSetupEncryptionToast
+    showToast as showSetupEncryptionToast,
 } from "./toasts/SetupEncryptionToast";
 import {
     hideToast as hideUnverifiedSessionsToast,
-    showToast as showUnverifiedSessionsToast
+    showToast as showUnverifiedSessionsToast,
 } from "./toasts/UnverifiedSessionToast";
+import { privateShouldBeEncrypted } from "./createRoom";
+import { isSecretStorageBeingAccessed, accessSecretStorage } from "./SecurityManager";
+import { isSecureBackupRequired } from './utils/WellKnownUtils';
+import { isLoggedIn } from './components/structures/MatrixChat';
+
 
 const KEY_BACKUP_POLL_INTERVAL = 5 * 60 * 1000;
 
 export default class DeviceListener {
+    private dispatcherRef: string;
     // device IDs for which the user has dismissed the verify toast ('Later')
     private dismissed = new Set<string>();
     // has the user dismissed any of the various nag toasts to setup encryption on this device?
@@ -49,8 +54,8 @@ export default class DeviceListener {
     private displayingToastsForDeviceIds = new Set<string>();
 
     static sharedInstance() {
-        if (!window.mx_DeviceListener) window.mx_DeviceListener = new DeviceListener();
-        return window.mx_DeviceListener;
+        if (!window.mxDeviceListener) window.mxDeviceListener = new DeviceListener();
+        return window.mxDeviceListener;
     }
 
     start() {
@@ -61,6 +66,7 @@ export default class DeviceListener {
         MatrixClientPeg.get().on('crossSigning.keysChanged', this._onCrossSingingKeysChanged);
         MatrixClientPeg.get().on('accountData', this._onAccountData);
         MatrixClientPeg.get().on('sync', this._onSync);
+        this.dispatcherRef = dis.register(this._onAction);
         this._recheck();
     }
 
@@ -73,6 +79,10 @@ export default class DeviceListener {
             MatrixClientPeg.get().removeListener('crossSigning.keysChanged', this._onCrossSingingKeysChanged);
             MatrixClientPeg.get().removeListener('accountData', this._onAccountData);
             MatrixClientPeg.get().removeListener('sync', this._onSync);
+        }
+        if (this.dispatcherRef) {
+            dis.unregister(this.dispatcherRef);
+            this.dispatcherRef = null;
         }
         this.dismissed.clear();
         this.dismissedThisDeviceToast = false;
@@ -120,26 +130,26 @@ export default class DeviceListener {
 
         // No need to do a recheck here: we just need to get a snapshot of our devices
         // before we download any new ones.
-    }
+    };
 
     _onDevicesUpdated = (users: string[]) => {
         if (!users.includes(MatrixClientPeg.get().getUserId())) return;
         this._recheck();
-    }
+    };
 
     _onDeviceVerificationChanged = (userId: string) => {
         if (userId !== MatrixClientPeg.get().getUserId()) return;
         this._recheck();
-    }
+    };
 
     _onUserTrustStatusChanged = (userId: string) => {
         if (userId !== MatrixClientPeg.get().getUserId()) return;
         this._recheck();
-    }
+    };
 
     _onCrossSingingKeysChanged = () => {
         this._recheck();
-    }
+    };
 
     _onAccountData = (ev) => {
         // User may have:
@@ -153,11 +163,16 @@ export default class DeviceListener {
         ) {
             this._recheck();
         }
-    }
+    };
 
     _onSync = (state, prevState) => {
         if (state === 'PREPARED' && prevState === null) this._recheck();
-    }
+    };
+
+    _onAction = ({ action }) => {
+        if (action !== "on_logged_in") return;
+        this._recheck();
+    };
 
     // The server doesn't tell us when key backup is set up, so we poll
     // & cache the result
@@ -170,13 +185,21 @@ export default class DeviceListener {
         return this.keyBackupInfo;
     }
 
+    private shouldShowSetupEncryptionToast() {
+        // If we're in the middle of a secret storage operation, we're likely
+        // modifying the state involved here, so don't add new toasts to setup.
+        if (isSecretStorageBeingAccessed()) return false;
+        // In a default configuration, show the toasts. If the well-known config causes e2ee default to be false
+        // then do not show the toasts until user is in at least one encrypted room.
+        if (privateShouldBeEncrypted()) return true;
+        const cli = MatrixClientPeg.get();
+        return cli && cli.getRooms().some(r => cli.isRoomEncrypted(r.roomId));
+    }
+
     async _recheck() {
         const cli = MatrixClientPeg.get();
 
-        if (
-            !SettingsStore.getValue("feature_cross_signing") ||
-            !await cli.doesServerSupportUnstableFeature("org.matrix.e2e_cross_signing")
-        ) return;
+        if (!await cli.doesServerSupportUnstableFeature("org.matrix.e2e_cross_signing")) return;
 
         if (!cli.isCryptoEnabled()) return;
         // don't recheck until the initial sync is complete: lots of account data events will fire
@@ -184,26 +207,41 @@ export default class DeviceListener {
         // (we add a listener on sync to do once check after the initial sync is done)
         if (!cli.isInitialSyncComplete()) return;
 
+        // JRS: This will change again in the next PR which moves secret storage
+        // later in the process.
         const crossSigningReady = await cli.isCrossSigningReady();
+        const secretStorageReady = await cli.isSecretStorageReady();
+        const allSystemsReady = crossSigningReady && secretStorageReady;
 
-        if (this.dismissedThisDeviceToast || crossSigningReady) {
+        if (this.dismissedThisDeviceToast || allSystemsReady) {
             hideSetupEncryptionToast();
-        } else {
+        } else if (this.shouldShowSetupEncryptionToast()) {
             // make sure our keys are finished downloading
             await cli.downloadKeys([cli.getUserId()]);
             // cross signing isn't enabled - nag to enable it
             // There are 3 different toasts for:
-            if (cli.getStoredCrossSigningForUser(cli.getUserId())) {
+            if (
+                !cli.getCrossSigningId() &&
+                cli.getStoredCrossSigningForUser(cli.getUserId())
+            ) {
                 // Cross-signing on account but this device doesn't trust the master key (verify this session)
                 showSetupEncryptionToast(SetupKind.VERIFY_THIS_SESSION);
             } else {
                 const backupInfo = await this._getKeyBackupInfo();
                 if (backupInfo) {
                     // No cross-signing on account but key backup available (upgrade encryption)
-                    showSetupEncryptionToast(Kind.UPGRADE_ENCRYPTION);
+                    showSetupEncryptionToast(SetupKind.UPGRADE_ENCRYPTION);
                 } else {
                     // No cross-signing or key backup on account (set up encryption)
-                    showSetupEncryptionToast(Kind.SET_UP_ENCRYPTION);
+                    await cli.waitForClientWellKnown();
+                    if (isSecureBackupRequired() && isLoggedIn()) {
+                        // If we're meant to set up, and Secure Backup is required,
+                        // trigger the flow directly without a toast once logged in.
+                        hideSetupEncryptionToast();
+                        accessSecretStorage();
+                    } else {
+                        showSetupEncryptionToast(SetupKind.SET_UP_ENCRYPTION);
+                    }
                 }
             }
         }

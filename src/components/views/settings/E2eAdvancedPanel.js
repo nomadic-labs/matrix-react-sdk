@@ -18,14 +18,14 @@ import React from 'react';
 
 import * as sdk from '../../../index';
 import {_t} from "../../../languageHandler";
-import {SettingLevel} from "../../../settings/SettingsStore";
+import {SettingLevel} from "../../../settings/SettingLevel";
 
 const SETTING_MANUALLY_VERIFY_ALL_SESSIONS = "e2ee.manuallyVerifyAllSessions";
 
 const E2eAdvancedPanel = props => {
     const SettingsFlag = sdk.getComponent('views.elements.SettingsFlag');
     return <div className="mx_SettingsTab_section">
-        <span className="mx_SettingsTab_subheading">{_t("Advanced")}</span>
+        <span className="mx_SettingsTab_subheading">{_t("Encryption")}</span>
 
         <SettingsFlag name={SETTING_MANUALLY_VERIFY_ALL_SESSIONS}
             level={SettingLevel.DEVICE}

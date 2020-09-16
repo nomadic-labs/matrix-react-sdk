@@ -20,18 +20,17 @@ limitations under the License.
 import React, {useCallback, useMemo, useState, useEffect, useContext} from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import {Group, RoomMember, User} from 'matrix-js-sdk';
+import {Group, RoomMember, User, Room} from 'matrix-js-sdk';
 import dis from '../../../dispatcher/dispatcher';
 import Modal from '../../../Modal';
 import * as sdk from '../../../index';
 import { _t } from '../../../languageHandler';
-import createRoom from '../../../createRoom';
+import createRoom, {privateShouldBeEncrypted} from '../../../createRoom';
 import DMRoomMap from '../../../utils/DMRoomMap';
 import AccessibleButton from '../elements/AccessibleButton';
 import SdkConfig from '../../../SdkConfig';
 import SettingsStore from "../../../settings/SettingsStore";
 import {EventTimeline} from "matrix-js-sdk";
-import AutoHideScrollbar from "../../structures/AutoHideScrollbar";
 import RoomViewStore from "../../../stores/RoomViewStore";
 import MultiInviter from "../../../utils/MultiInviter";
 import GroupStore from "../../../stores/GroupStore";
@@ -40,11 +39,13 @@ import E2EIcon from "../rooms/E2EIcon";
 import {useEventEmitter} from "../../../hooks/useEventEmitter";
 import {textualPowerLevel} from '../../../Roles';
 import MatrixClientContext from "../../../contexts/MatrixClientContext";
-import {RIGHT_PANEL_PHASES} from "../../../stores/RightPanelStorePhases";
+import {RightPanelPhases} from "../../../stores/RightPanelStorePhases";
 import EncryptionPanel from "./EncryptionPanel";
 import { useAsyncMemo } from '../../../hooks/useAsyncMemo';
 import { verifyUser, legacyVerifyUser, verifyDevice } from '../../../verification';
 import {Action} from "../../../dispatcher/actions";
+import {useIsEncrypted} from "../../../hooks/useIsEncrypted";
+import BaseCard from "./BaseCard";
 
 const _disambiguateDevices = (devices) => {
     const names = Object.create(null);
@@ -64,10 +65,6 @@ const _disambiguateDevices = (devices) => {
 };
 
 export const getE2EStatus = (cli, userId, devices) => {
-    if (!SettingsStore.getValue("feature_cross_signing")) {
-        const hasUnverifiedDevice = devices.some((device) => device.isUnverified());
-        return hasUnverifiedDevice ? "warning" : "verified";
-    }
     const isMe = userId === cli.getUserId();
     const userTrust = cli.checkUserTrust(userId);
     if (!userTrust.isCrossSigningVerified()) {
@@ -112,7 +109,7 @@ async function openDMForUser(matrixClient, userId) {
         dmUserId: userId,
     };
 
-    if (SettingsStore.getValue("feature_cross_signing")) {
+    if (privateShouldBeEncrypted()) {
         // Check whether all users have uploaded device keys before.
         // If so, enable encryption in the new room.
         const usersToDevicesMap = await matrixClient.downloadKeys([userId]);
@@ -126,18 +123,6 @@ async function openDMForUser(matrixClient, userId) {
     }
 
     createRoom(createRoomOptions);
-}
-
-function useIsEncrypted(cli, room) {
-    const [isEncrypted, setIsEncrypted] = useState(room ? cli.isRoomEncrypted(room.roomId) : undefined);
-
-    const update = useCallback((event) => {
-        if (event.getType() === "m.room.encryption") {
-            setIsEncrypted(cli.isRoomEncrypted(room.roomId));
-        }
-    }, [cli, room]);
-    useEventEmitter(room ? room.currentState : undefined, "RoomState.events", update);
-    return isEncrypted;
 }
 
 function useHasCrossSigningKeys(cli, member, canVerify, setUpdating) {
@@ -167,9 +152,7 @@ function DeviceItem({userId, device}) {
     // cross-signing so that other users can then safely trust you.
     // For other people's devices, the more general verified check that
     // includes locally verified devices can be used.
-    const isVerified = (isMe && SettingsStore.getValue("feature_cross_signing")) ?
-        deviceTrust.isCrossSigningVerified() :
-        deviceTrust.isVerified();
+    const isVerified = isMe ? deviceTrust.isCrossSigningVerified() : deviceTrust.isVerified();
 
     const classes = classNames("mx_UserInfo_device", {
         mx_UserInfo_device_verified: isVerified,
@@ -248,9 +231,7 @@ function DevicesSection({devices, userId, loading}) {
             // cross-signing so that other users can then safely trust you.
             // For other people's devices, the more general verified check that
             // includes locally verified devices can be used.
-            const isVerified = (isMe && SettingsStore.getValue("feature_cross_signing")) ?
-                deviceTrust.isCrossSigningVerified() :
-                deviceTrust.isVerified();
+            const isVerified = isMe ? deviceTrust.isCrossSigningVerified() : deviceTrust.isVerified();
 
             if (isVerified) {
                 expandSectionDevices.push(device);
@@ -470,7 +451,7 @@ const _isMuted = (member, powerLevelContent) => {
     return member.powerLevel < levelToSend;
 };
 
-const useRoomPowerLevels = (cli, room) => {
+export const useRoomPowerLevels = (cli, room) => {
     const [powerLevels, setPowerLevels] = useState({});
 
     const update = useCallback(() => {
@@ -558,7 +539,9 @@ const RedactMessagesButton = ({member}) => {
         let eventsToRedact = [];
         while (timeline) {
             eventsToRedact = timeline.getEvents().reduce((events, event) => {
-                if (event.getSender() === userId && !event.isRedacted() && !event.isRedaction()) {
+                if (event.getSender() === userId && !event.isRedacted() && !event.isRedaction() &&
+                    event.getType() !== "m.room.create"
+                ) {
                     return events.concat(event);
                 } else {
                     return events;
@@ -756,19 +739,26 @@ const RoomAdminToolsContainer = ({room, children, member, startUpdating, stopUpd
         powerLevels.state_default
     );
 
+    // if these do not exist in the event then they should default to 50 as per the spec
+    const {
+        ban: banPowerLevel = 50,
+        kick: kickPowerLevel = 50,
+        redact: redactPowerLevel = 50,
+    } = powerLevels;
+
     const me = room.getMember(cli.getUserId());
     const isMe = me.userId === member.userId;
     const canAffectUser = member.powerLevel < me.powerLevel || isMe;
 
-    if (canAffectUser && me.powerLevel >= powerLevels.kick) {
+    if (canAffectUser && me.powerLevel >= kickPowerLevel) {
         kickButton = <RoomKickButton member={member} startUpdating={startUpdating} stopUpdating={stopUpdating} />;
     }
-    if (me.powerLevel >= powerLevels.redact) {
+    if (me.powerLevel >= redactPowerLevel) {
         redactButton = (
             <RedactMessagesButton member={member} startUpdating={startUpdating} stopUpdating={stopUpdating} />
         );
     }
-    if (canAffectUser && me.powerLevel >= powerLevels.ban) {
+    if (canAffectUser && me.powerLevel >= banPowerLevel) {
         banButton = <BanToggleButton member={member} startUpdating={startUpdating} stopUpdating={stopUpdating} />;
     }
     if (canAffectUser && me.powerLevel >= editPowerLevel) {
@@ -1288,11 +1278,11 @@ const BasicUserInfo = ({room, member, groupId, devices, isRoomEncrypted}) => {
     );
 
     // only display the devices list if our client supports E2E
-    const _enableDevices = cli.isCryptoEnabled();
+    const cryptoEnabled = cli.isCryptoEnabled();
 
     let text;
     if (!isRoomEncrypted) {
-        if (!_enableDevices) {
+        if (!cryptoEnabled) {
             text = _t("This client does not support end-to-end encryption.");
         } else if (room) {
             text = _t("Messages in this room are not end-to-end encrypted.");
@@ -1306,11 +1296,10 @@ const BasicUserInfo = ({room, member, groupId, devices, isRoomEncrypted}) => {
     let verifyButton;
     const homeserverSupportsCrossSigning = useHomeserverSupportsCrossSigning(cli);
 
-    const userTrust = cli.checkUserTrust(member.userId);
-    const userVerified = userTrust.isCrossSigningVerified();
+    const userTrust = cryptoEnabled && cli.checkUserTrust(member.userId);
+    const userVerified = cryptoEnabled && userTrust.isCrossSigningVerified();
     const isMe = member.userId === cli.getUserId();
-    const canVerify = SettingsStore.getValue("feature_cross_signing") &&
-                        homeserverSupportsCrossSigning && !userVerified && !isMe;
+    const canVerify = cryptoEnabled && homeserverSupportsCrossSigning && !userVerified && !isMe;
 
     const setUpdating = (updating) => {
         setPendingUpdateCount(count => count + (updating ? 1 : -1));
@@ -1347,10 +1336,10 @@ const BasicUserInfo = ({room, member, groupId, devices, isRoomEncrypted}) => {
             <h3>{ _t("Security") }</h3>
             <p>{ text }</p>
             { verifyButton }
-            <DevicesSection
+            { cryptoEnabled && <DevicesSection
                 loading={showDeviceListSpinner}
                 devices={devices}
-                userId={member.userId} />
+                userId={member.userId} /> }
         </div>
     );
 
@@ -1375,15 +1364,8 @@ const BasicUserInfo = ({room, member, groupId, devices, isRoomEncrypted}) => {
     </React.Fragment>;
 };
 
-const UserInfoHeader = ({onClose, member, e2eStatus}) => {
+const UserInfoHeader = ({member, e2eStatus}) => {
     const cli = useContext(MatrixClientContext);
-
-    let closeButton;
-    if (onClose) {
-        closeButton = <AccessibleButton className="mx_UserInfo_cancel" onClick={onClose} title={_t('Close')}>
-            <div />
-        </AccessibleButton>;
-    }
 
     const onMemberAvatarClick = useCallback(() => {
         const avatarUrl = member.getMxcAvatarUrl ? member.getMxcAvatarUrl() : member.avatarUrl;
@@ -1428,7 +1410,7 @@ const UserInfoHeader = ({onClose, member, e2eStatus}) => {
         presenceLastActiveAgo = member.user.lastActiveAgo;
         presenceCurrentlyActive = member.user.currentlyActive;
 
-        if (SettingsStore.isFeatureEnabled("feature_custom_status")) {
+        if (SettingsStore.getValue("feature_custom_status")) {
             statusMessage = member.user._unstable_statusMessage;
         }
     }
@@ -1459,7 +1441,6 @@ const UserInfoHeader = ({onClose, member, e2eStatus}) => {
 
     const displayName = member.name || member.displayname;
     return <React.Fragment>
-        { closeButton }
         { avatarElement }
 
         <div className="mx_UserInfo_container mx_UserInfo_separator">
@@ -1482,11 +1463,9 @@ const UserInfoHeader = ({onClose, member, e2eStatus}) => {
     </React.Fragment>;
 };
 
-const UserInfo = ({user, groupId, roomId, onClose, phase=RIGHT_PANEL_PHASES.RoomMemberInfo, ...props}) => {
+const UserInfo = ({user, groupId, room, onClose, phase=RightPanelPhases.RoomMemberInfo, ...props}) => {
     const cli = useContext(MatrixClientContext);
 
-    // Load room if we are given a room id and memoize it
-    const room = useMemo(() => roomId ? cli.getRoom(roomId) : null, [cli, roomId]);
     // fetch latest room member if we have a room, so we don't show historical information, falling back to user
     const member = useMemo(() => room ? (room.getMember(user.userId) || user) : user, [room, user]);
 
@@ -1502,8 +1481,8 @@ const UserInfo = ({user, groupId, roomId, onClose, phase=RIGHT_PANEL_PHASES.Room
 
     let content;
     switch (phase) {
-        case RIGHT_PANEL_PHASES.RoomMemberInfo:
-        case RIGHT_PANEL_PHASES.GroupMemberInfo:
+        case RightPanelPhases.RoomMemberInfo:
+        case RightPanelPhases.GroupMemberInfo:
             content = (
                 <BasicUserInfo
                     room={room}
@@ -1513,7 +1492,7 @@ const UserInfo = ({user, groupId, roomId, onClose, phase=RIGHT_PANEL_PHASES.Room
                     isRoomEncrypted={isRoomEncrypted} />
             );
             break;
-        case RIGHT_PANEL_PHASES.EncryptionPanel:
+        case RightPanelPhases.EncryptionPanel:
             classes.push("mx_UserInfo_smallAvatar");
             content = (
                 <EncryptionPanel {...props} member={member} onClose={onClose} isRoomEncrypted={isRoomEncrypted} />
@@ -1521,15 +1500,16 @@ const UserInfo = ({user, groupId, roomId, onClose, phase=RIGHT_PANEL_PHASES.Room
             break;
     }
 
-    return (
-        <div className={classes.join(" ")} role="tabpanel">
-            <AutoHideScrollbar className="mx_UserInfo_scrollContainer">
-                <UserInfoHeader member={member} e2eStatus={e2eStatus} onClose={onClose} />
+    let previousPhase: RightPanelPhases;
+    // We have no previousPhase for when viewing a UserInfo from a Group or without a Room at this time
+    if (room) {
+        previousPhase = RightPanelPhases.RoomMemberList;
+    }
 
-                { content }
-            </AutoHideScrollbar>
-        </div>
-    );
+    const header = <UserInfoHeader member={member} e2eStatus={e2eStatus} onClose={onClose} />;
+    return <BaseCard className={classes.join(" ")} header={header} onClose={onClose} previousPhase={previousPhase}>
+        { content }
+    </BaseCard>;
 };
 
 UserInfo.propTypes = {
@@ -1540,7 +1520,7 @@ UserInfo.propTypes = {
     ]).isRequired,
     group: PropTypes.instanceOf(Group),
     groupId: PropTypes.string,
-    roomId: PropTypes.string,
+    room: PropTypes.instanceOf(Room),
 
     onClose: PropTypes.func,
 };
